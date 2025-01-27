@@ -85,10 +85,10 @@ module.exports = {
                 rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID); // ZSU Controller role
                 console.log(`Assigning roles for home controller: ${rolesToAssign}`);
             } else if (visiting_facilities.length > 0) {
-                rolesToAssign.push(process.env.VATSIM_USER_ROLE_ID); // Only VATSIM User role
+                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // Only VATSIM User role
                 console.log(`Assigning roles for visiting facilities: ${rolesToAssign}`);
             } else {
-                rolesToAssign.push(process.env.VATSIM_USER_ROLE_ID); // Only VATSIM User role
+                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // Only VATSIM User role
                 console.log(`Assigning only VATSIM User role: ${rolesToAssign}`);
             }
 

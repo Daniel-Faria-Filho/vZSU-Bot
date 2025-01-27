@@ -80,22 +80,32 @@ module.exports = {
             const nickname = `${first_name} ${last_name} - ${cid}`;
             console.log(`Setting nickname for user ${discordUserId}: ${nickname}`);
 
+            // Fetch the member object for the specified Discord ID
+            const member = await interaction.guild.members.fetch(discordUserId);
+            if (!member) {
+                console.log(`User with Discord ID ${discordUserId} not found in the server.`);
+                const reply = await interaction.editReply({ content: "User not found in the server.", ephemeral: true });
+                setTimeout(() => reply.delete(), 30000); // Delete after 30 seconds
+                return;
+            }
+
             // Role assignment logic
             const rolesToAssign = [];
-            if (fir && fir.name_short === `${facility}`) {
-                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID);
-                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
+            if (fir && fir.name_short === process.env.FACILITY_NAME) {
+                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // VATSIM User role
+                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID); // Home/Visiting Controller role
                 console.log(`Assigning roles for home controller: ${rolesToAssign}`);
             } else if (visiting_facilities.length > 0) {
-                rolesToAssign.push(process.env.VATSIM_USER_ROLE_ID);
+                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // Only VATSIM User role
                 console.log(`Assigning roles for visiting facilities: ${rolesToAssign}`);
             } else {
-                rolesToAssign.push(process.env.VATSIM_USER_ROLE_ID);
+                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // Only VATSIM User role
                 console.log(`Assigning only VATSIM User role: ${rolesToAssign}`);
             }
 
-            // Assign VATSIM User role first
-            await interaction.member.roles.add(rolesToAssign[0]);
+            // Assign roles to the specified user
+            await member.roles.add(rolesToAssign); // Add roles to the specified user
+            console.log(`Roles assigned to user ${discordUserId}.`);
 
             const hasHomeOrVisitingControllerRole = interaction.member.roles.cache.some(role => role.id === process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
 
@@ -140,10 +150,10 @@ module.exports = {
             const userRating = ratingData.rating;
             console.log(`User ${discordUserId} has a rating of: ${userRating}`);
 
-            // Assign the rating role if it exists
+            // Assign the rating role to the specified user if it exists
             if (userRating in ratingRoles) {
-                await interaction.member.roles.add(ratingRoles[userRating]);
-                console.log(`Assigned role for rating ${userRating} to user ${discordUserId}.`);
+                await member.roles.add(ratingRoles[userRating]);
+                console.log(`Assigned rating role for rating ${userRating} to user ${discordUserId}.`);
             } else {
                 console.log(`No role found for rating ${userRating} for user ${discordUserId}.`);
             }
