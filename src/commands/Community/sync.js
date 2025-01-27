@@ -22,7 +22,7 @@ module.exports = {
 
             if (!vatsimData.user_id) {
                 console.log(`User ${discordUserId} not found in VATSIM.`);
-                const reply = await interaction.editReply({ content: "Please sync your Discord with the [VATSIM Community Hub](https://community.vatsim.net/settings) Discord Settings. Please sync the Discord there and try again.", ephemeral: true });
+                const reply = await interaction.editReply({ content: "Please sync your Discord with the [VATSIM Community Hub](https://community.vatsim.net/settings) Discord Settings. Once you are synced, please try again.", ephemeral: true });
                 setTimeout(() => reply.delete(), 30000); // Delete after 30 seconds
                 return;
             }

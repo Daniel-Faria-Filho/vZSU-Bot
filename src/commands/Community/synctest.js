@@ -26,7 +26,7 @@ module.exports = {
 
             if (!vatsimData.user_id) {
                 console.log(`User ${discordUserId} not found in VATSIM.`);
-                const reply = await interaction.editReply({ content: "This Discord ID is not synced with the [VATSIM Community Hub](https://community.vatsim.net/settings) Discord Settings.", ephemeral: true });
+                const reply = await interaction.editReply({ content: "Please sync your Discord with the [VATSIM Community Hub](https://community.vatsim.net/settings) Discord Settings. Once you are synced, please try again.  If the issue persists, contact Senior Staff.", ephemeral: true });
                 setTimeout(() => reply.delete(), 30000);
                 return;
             }
