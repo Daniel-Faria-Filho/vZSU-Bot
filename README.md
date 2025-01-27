@@ -1,4 +1,4 @@
-Hello! Welcome to vZSU's Open Source Discord bot made for ANY VATCAR facilities!!
+Hello! Welcome to vZSU's Open Source Discord bot made for ANY VATCAR facility!!
 
 This bot allows for users to AUTOMATICALLY sync their VATSIM Account with your FIR's Discord roles and will set their nickname to their Server nickname to this format: "{first} {last} | {CID}". That's right, NO MORE MANUAL ROLE ADDING ANYMORE! All you have to do is setup the .envexample file and follow instructions in the file to add you facility name and role id's. After that, rename the .envexample to .env and you are all set to start the bot!!
 
