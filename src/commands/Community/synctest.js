@@ -26,8 +26,23 @@ module.exports = {
 
             if (!vatsimData.user_id) {
                 console.log(`User ${discordUserId} not found in VATSIM.`);
-                const reply = await interaction.editReply({ content: "Please sync your Discord with the [VATSIM Community Hub](https://community.vatsim.net/settings) Discord Settings. Once you are synced, please try again.  If the issue persists, contact Senior Staff.", ephemeral: true });
+                const reply = await interaction.editReply({ content: "Please sync your Discord with the [VATSIM Community Hub](https://community.vatsim.net/settings) Discord Settings. Once you are synced, please try again. If the issue persists, contact Senior Staff.", ephemeral: true });
                 setTimeout(() => reply.delete(), 30000);
+
+                // Notify the Facility Web Master about the VATSIM user not found
+                const webMasterUser = await interaction.client.users.fetch(WM); // Fetch the user by ID
+                const vatsimErrorEmbed = new EmbedBuilder()
+                    .setColor('#ffcc00') // Yellow color for warning
+                    .setTitle('VATSIM User Not Found')
+                    .setThumbnail(interaction.user.displayAvatarURL()) // Set the user's avatar as the thumbnail
+                    .addFields(
+                        { name: 'Discord ID', value: discordUserId, inline: true },
+                        { name: 'Username', value: interaction.user.username, inline: true }, // Include username
+                        { name: 'Channel', value: interaction.channel.name, inline: true }, // Include channel name
+                        { name: 'Message', value: 'The user was not found in the VATSIM database. Please ensure they have linked their Discord account properly.', inline: true }
+                    )
+                    .setTimestamp();
+                await webMasterUser.send({ embeds: [vatsimErrorEmbed] }); // Send the embed as a DM
                 return;
             }
 
@@ -43,6 +58,21 @@ module.exports = {
                 console.log(`Failed to fetch VATCAR data for CID ${cid}.`);
                 const reply = await interaction.editReply({ content: "Please log in with your Discord on the [VATCAR website](https://vatcar.net/public/auth/login) and go to My VATCAR > Integrations then try again. If the issue persists, contact Senior Staff.", ephemeral: true });
                 setTimeout(() => reply.delete(), 30000);
+
+                // Notify the Facility Web Master about the VATCAR fetch failure
+                const webMasterUser = await interaction.client.users.fetch(WM); // Fetch the user by ID
+                const vatcarErrorEmbed = new EmbedBuilder()
+                    .setColor('#ffcc00') // Yellow color for warning
+                    .setTitle('VATCAR Data Fetch Failed')
+                    .setThumbnail(interaction.user.displayAvatarURL()) // Set the user's avatar as the thumbnail
+                    .addFields(
+                        { name: 'Discord ID', value: discordUserId, inline: true },
+                        { name: 'Username', value: interaction.user.username, inline: true }, // Include username
+                        { name: 'Channel', value: interaction.channel.name, inline: true }, // Include channel name
+                        { name: 'Message', value: 'The user data could not be retrieved from VATCAR. Please check their account status.', inline: true }
+                    )
+                    .setTimestamp();
+                await webMasterUser.send({ embeds: [vatcarErrorEmbed] }); // Send the embed as a DM
                 return;
             }
 
@@ -138,11 +168,10 @@ module.exports = {
                 return role ? role.name : `Unknown Role (${roleId})`;
             }).join(', ');
 
-            // Log the successful sync by sending a DM to the specified user
-            const targetUser = await interaction.client.users.fetch(WM);
+            // Log the successful sync by sending a DM to the Facility Web Master
             const embed = new EmbedBuilder()
                 .setColor('#0099ff')
-                .setTitle('User Sync Successful')
+                .setTitle('Test User Sync Successful')
                 .setThumbnail(interaction.user.displayAvatarURL())
                 .addFields(
                     { name: 'Discord ID', value: discordUserId, inline: true },
@@ -153,12 +182,32 @@ module.exports = {
                 )
                 .setTimestamp();
 
-            await targetUser.send({ embeds: [embed] });
+            // Notify the Facility Web Master about the successful operation
+            const webMasterUser = await interaction.client.users.fetch(WM); // Fetch the user by ID
+            await webMasterUser.send({ embeds: [embed] }); // Send the embed as a DM
 
             const reply = await interaction.editReply({ content: "Roles assigned and nickname updated successfully.", ephemeral: true });
             setTimeout(() => reply.delete(), 30000);
         } catch (error) {
             console.error(`Error processing synctest command for user ${discordUserId}:`, error);
+            
+            // Create an embed for the error message
+            const errorEmbed = new EmbedBuilder()
+                .setColor('#ff0000') // Red color for error
+                .setTitle('User Sync Error')
+                .setThumbnail(interaction.user.displayAvatarURL()) // Set the user's avatar as the thumbnail
+                .addFields(
+                    { name: 'Discord ID', value: discordUserId, inline: true },
+                    { name: 'Username', value: interaction.user.username, inline: true }, // Include username
+                    { name: 'Channel', value: interaction.channel.name, inline: true }, // Include channel name
+                    { name: 'Error Message', value: error.message || 'Unknown error', inline: true }
+                )
+                .setTimestamp();
+
+            // Send the error embed to the Facility Web Master
+            const webMasterUser = await interaction.client.users.fetch(WM); // Fetch the user by ID
+            await webMasterUser.send({ embeds: [errorEmbed] }); // Send the embed as a DM
+
             const reply = await interaction.editReply({ content: "An error occurred while processing your request.", ephemeral: true });
             setTimeout(() => reply.delete(), 30000);
         }
