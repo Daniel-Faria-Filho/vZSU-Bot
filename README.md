@@ -54,3 +54,34 @@ It means your bot has started and you are good to go! You can then try and test 
 
 
 Please contact Daniel Faria on Discord or email via "inbox@danielfaria.cc" if you have any questions or need some help setting up. I am glad to help.
+
+
+
+
+
+
+
+
+
+**COMMANDS:**
+
+1. /member-stats Description: Fetches and displays statistics for a specified Discord user. How It Works: The command retrieves the selected user's VATSIM ID from the VATSIM API then uses that ID to get information from the user from VATCAR's API. It then creates an embed message displaying the user's CID, Discord ID, username, full name, current FIR, and any visiting facilities. The embed is sent as a follow-up message and is deleted after 15 seconds. NOTE: This command should only be available to Senior Staff and Tech Staff.
+
+2. /sync Description: Syncs a user's Discord account with VATSIM and assigns appropriate roles. How It Works: The command checks if the user is linked to VATSIM. If found, it fetches their data from the VATCAR API, assigns roles based on their current position and rating, and updates their nickname. If the user is not found or if there are issues fetching data, it sends error messages and notifies the facility web master. Success messages are sent over DMs to the Facility Air Traffic Manager.
+
+3. /synctest Description: Tests the sync process for a specific Discord user ID. How It Works: Similar to the /sync command, but it allows testing for any user by providing their Discord ID. It fetches the user's VATSIM and VATCAR data, assigns roles, and updates the nickname. It also sends a summary of the sync results to the facility web master. NOTE: This command should only be available to Senior Staff and Tech Staff.
+
+4. /flightaware Description: Provides a link to check flight routes or flights on FlightAware. How It Works: The command takes departure and arrival ICAO codes as input and generates a button that links to the FlightAware website for the specified route. The button is included in the reply message, which is sent as an ephemeral message.
+
+5. /top-down-support Description: Requests top-down support for a specific position. How It Works: The command allows users to select their current position and the position they are requesting support for. It creates an embed message summarizing the request and sends it to the channel, notifying relevant parties of the support request. NOTE: This command should only be available to S3+ Rated Users.
+
+6. /check-stats Description: Provides a link to check member stats on VATSIM. How It Works: The command takes a CID as input and generates a button that links to the VATSIM stats page for that user. The button is included in the reply message, which is sent as an ephemeral message.
+
+7. /autoresponder Description: Sets up an autoresponder for specific messages in the channel. How It Works: The command takes a sentence to listen for and a response to send. It creates a message collector that listens for messages containing the specified sentence and replies with the designated response. It also confirms the setup with an embed message. NOTE: This command should only be available to Senior Staff and Tech Staff.
+
+8. /dm Description: Sends a direct message to a specified user. How It Works: The command takes a user and a message as input. It sends the specified message to the selected user as a DM and confirms the action with a reply in the channel. NOTE: This command should only be available to Senior Staff and Tech Staff. It is made to DM users anonymously from a member of the Senior Staff.
+
+9. /check-notes Description: Retrieves and displays training notes for a specified user. How It Works: The command takes a Discord user as input, fetches their VATSIM ID, and retrieves their training notes from the VATCAR API. It creates an embed message displaying the latest training note details, including the instructor's name, session date, and training note content. NOTE: This command should only be available to Senior Staff, Tech Staff, and Training Staff.
+
+
+**NOTE**: *You can set who can use what commands by going into the Server Settings > Integrations > Select your bot. There you can manage who can use certain commands. If you want only Senior Staff to see a certain command, simply add it so they have privelges and deny @everyone privelges.*
