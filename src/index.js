@@ -167,8 +167,4 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     }
   });
 
-
-
-
-
 const PORT = process.env.PORT || 3001;
