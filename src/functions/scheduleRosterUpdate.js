@@ -71,7 +71,7 @@ async function performRosterUpdate(guild, client) {
         };
 
         // Fetch VATCAR roster data
-        const response = await fetch('https://vatcar.net/public/api/v2/facility/roster?api_key=byNPs94pyIIvgSSDKS7bWEgwz20t71yAkw1PLoiRPA0NDfYEcF');
+        const response = await fetch(`https://vatcar.net/public/api/v2/facility/roster?api_key=${process.env.API_KEY}`);
         const data = await response.json();
 
         if (!data.success) {
@@ -115,97 +115,95 @@ async function performRosterUpdate(guild, client) {
 
         // Process each member
         for (const [memberId, member] of members) {
-            let controllerData = controllerMap.get(memberId);
-            
-            if (!controllerData) {
+            try {
+                // First check VATSIM API to get their CID
                 try {
                     const vatsimResponse = await vatsimRateLimiter.makeRequest(
                         `https://api.vatsim.net/v2/members/discord/${memberId}`
                     );
                     const vatsimData = await vatsimResponse.json();
-                    
-                    if (vatsimData && vatsimData.user_id) {
-                        const ratingResponse = await vatsimRateLimiter.makeRequest(
-                            `https://api.vatsim.net/v2/members/${vatsimData.user_id}`
-                        );
-                        const ratingData = await ratingResponse.json();
-                        
-                        if (ratingData && ratingData.rating) {
-                            controllerData = {
-                                cid: vatsimData.user_id,
-                                rating: ratingData.rating,
-                                isVisitor: false,
-                                isVATCAR: false
-                            };
-                        }
-                    } else {
-                        console.log(`⚠️ ${member.user.tag} - No VATSIM/VATCAR data found`);
+
+                    if (!vatsimData.user_id) {
+                        console.log(`⚠️ ${member.user.tag} - Skipped (No VATSIM data found)`);
                         stats.skipped++;
                         continue;
                     }
+
+                    // Get rating from VATSIM API
+                    const ratingResponse = await vatsimRateLimiter.makeRequest(
+                        `https://api.vatsim.net/v2/members/${vatsimData.user_id}`
+                    );
+                    const ratingData = await ratingResponse.json();
+
+                    // Determine required roles
+                    const requiredRoles = new Set();
+                    requiredRoles.add(process.env.NORMAL_VATSIM_USER_ROLE_ID); // Always add VATSIM role if we got this far
+
+                    // If they appear anywhere in VATCAR data, give them the controller role
+                    const isInVATCAR = (
+                        data.data.controllers.some(c => c.cid === parseInt(vatsimData.user_id)) ||
+                        data.data.visitors.some(v => v.cid === parseInt(vatsimData.user_id))
+                    );
+
+                    if (isInVATCAR) {
+                        requiredRoles.add(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
+                    }
+                    
+                    if (ratingRoles[ratingData.rating]) {
+                        requiredRoles.add(ratingRoles[ratingData.rating]);
+                    }
+
+                    // Compare current roles with required roles
+                    const currentRoles = member.roles.cache;
+                    const rolesToAdd = [...requiredRoles].filter(roleId => !currentRoles.has(roleId));
+                    const rolesToRemove = [...currentRoles.keys()].filter(roleId => 
+                        Object.values(ratingRoles).includes(roleId) || 
+                        [process.env.NORMAL_VATSIM_USER_ROLE_ID, process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID].includes(roleId)
+                    ).filter(roleId => !requiredRoles.has(roleId));
+
+                    if (rolesToAdd.length > 0 || rolesToRemove.length > 0) {
+                        stats.wouldUpdate++;
+                        console.log(`\n📝 ${member.user.tag} (${vatsimData.user_id}) - Updating roles:`);
+                        
+                        if (rolesToAdd.length > 0) {
+                            const roleNames = rolesToAdd.map(id => guild.roles.cache.get(id)?.name || id).join(', ');
+                            console.log(`   ➕ Adding roles: ${roleNames}`);
+                            try {
+                                await member.roles.add(rolesToAdd);
+                            } catch (error) {
+                                console.log(`   ❌ Error adding roles: ${error.message}`);
+                            }
+                        }
+                        
+                        if (rolesToRemove.length > 0) {
+                            const roleNames = rolesToRemove.map(id => guild.roles.cache.get(id)?.name || id).join(', ');
+                            console.log(`   ➖ Removing roles: ${roleNames}`);
+                            try {
+                                await member.roles.remove(rolesToRemove);
+                            } catch (error) {
+                                console.log(`   ❌ Error removing roles: ${error.message}`);
+                            }
+                        }
+
+                        console.log(`    Current rating: ${ratingNames[ratingData.rating] || ratingData.rating}`);
+                        if (data.data.controllers.some(c => c.cid === parseInt(vatsimData.user_id)) || data.data.visitors.some(v => v.cid === parseInt(vatsimData.user_id))) {
+                            console.log(`   🏠 Status: ${data.data.visitors.some(v => v.cid === parseInt(vatsimData.user_id)) ? 'Visitor' : 'Home Controller'}`);
+                        }
+                    } else {
+                        console.log(`✅ ${member.user.tag} (${vatsimData.user_id}) - No changes needed`);
+                        stats.noChangesNeeded++;
+                    }
+
+                    stats.processed++;
                 } catch (error) {
-                    console.log(`⚠️ ${member.user.tag} - Error checking VATSIM data: ${error.message}`);
+                    console.log(`⚠️ ${member.user.tag} - Skipped (API Error: ${error.message})`);
                     stats.skipped++;
                     continue;
                 }
+            } catch (error) {
+                console.error('Error in roster update:', error);
+                throw error;
             }
-
-            if (!controllerData) continue;
-
-            // Determine required roles
-            const requiredRoles = new Set();
-            requiredRoles.add(process.env.NORMAL_VATSIM_USER_ROLE_ID);
-            
-            if (controllerData.isVATCAR) {
-                requiredRoles.add(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
-            }
-            
-            if (ratingRoles[controllerData.rating]) {
-                requiredRoles.add(ratingRoles[controllerData.rating]);
-            }
-
-            // Compare current roles with required roles
-            const currentRoles = member.roles.cache;
-            const rolesToAdd = [...requiredRoles].filter(roleId => !currentRoles.has(roleId));
-            const rolesToRemove = [...currentRoles.keys()].filter(roleId => 
-                Object.values(ratingRoles).includes(roleId) || 
-                [process.env.NORMAL_VATSIM_USER_ROLE_ID, process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID].includes(roleId)
-            ).filter(roleId => !requiredRoles.has(roleId));
-
-            if (rolesToAdd.length > 0 || rolesToRemove.length > 0) {
-                stats.wouldUpdate++;
-                console.log(`\n📝 ${member.user.tag} (${controllerData.cid}) - Updating roles:`);
-                
-                if (rolesToAdd.length > 0) {
-                    const roleNames = rolesToAdd.map(id => guild.roles.cache.get(id)?.name || id).join(', ');
-                    console.log(`   ➕ Adding roles: ${roleNames}`);
-                    try {
-                        await member.roles.add(rolesToAdd);
-                    } catch (error) {
-                        console.log(`   ❌ Error adding roles: ${error.message}`);
-                    }
-                }
-                
-                if (rolesToRemove.length > 0) {
-                    const roleNames = rolesToRemove.map(id => guild.roles.cache.get(id)?.name || id).join(', ');
-                    console.log(`   ➖ Removing roles: ${roleNames}`);
-                    try {
-                        await member.roles.remove(rolesToRemove);
-                    } catch (error) {
-                        console.log(`   ❌ Error removing roles: ${error.message}`);
-                    }
-                }
-
-                console.log(`   📊 Current rating: ${ratingNames[controllerData.rating] || controllerData.rating}`);
-                if (controllerData.isVATCAR) {
-                    console.log(`   🏠 Status: ${controllerData.isVisitor ? 'Visitor' : 'Home Controller'}`);
-                }
-            } else {
-                console.log(`✅ ${member.user.tag} (${controllerData.cid}) - No changes needed`);
-                stats.noChangesNeeded++;
-            }
-
-            stats.processed++;
         }
 
         // Log final statistics

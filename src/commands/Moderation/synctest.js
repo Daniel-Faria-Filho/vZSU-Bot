@@ -91,13 +91,14 @@ module.exports = {
 
             // Role assignment logic
             const rolesToAssign = [];
-            if (fir && fir.name_short === process.env.FACILITY_NAME) {
+            if (fir && fir.name_short === facility) {
                 rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // VATSIM User role
-                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID); // Home/Visiting Controller role
+                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID); // Home Controller role
                 console.log(`Assigning roles for home controller: ${rolesToAssign}`);
-            } else if (visiting_facilities.length > 0) {
-                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // Only VATSIM User role
-                console.log(`Assigning roles for visiting facilities: ${rolesToAssign}`);
+            } else if (visiting_facilities.some(f => f.fir.name_short === facility)) { // Check if they're visiting this specific facility
+                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // VATSIM User role
+                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID); // Visiting Controller role
+                console.log(`Assigning roles for visiting controller: ${rolesToAssign}`);
             } else {
                 rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // Only VATSIM User role
                 console.log(`Assigning only VATSIM User role: ${rolesToAssign}`);
