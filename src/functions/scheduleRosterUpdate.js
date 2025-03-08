@@ -42,6 +42,8 @@ const vatsimRateLimiter = {
 // Add the roster update logic as a separate function
 async function performRosterUpdate(guild, client) {
     try {
+        const facility = process.env.FACILITY_NAME;
+
         // Rating role mapping
         const ratingRoles = {
             1: process.env.OBS_ROLE_ID,
@@ -129,29 +131,48 @@ async function performRosterUpdate(guild, client) {
                         continue;
                     }
 
-                    // Get rating from VATSIM API
-                    const ratingResponse = await vatsimRateLimiter.makeRequest(
-                        `https://api.vatsim.net/v2/members/${vatsimData.user_id}`
-                    );
-                    const ratingData = await ratingResponse.json();
+                    // Get user's VATCAR data and rating data once
+                    const [vatcarResponse, ratingResponse] = await Promise.all([
+                        fetch(`https://vatcar.net/public/api/v2/user/${vatsimData.user_id}?api_key=${process.env.API_KEY}`),
+                        vatsimRateLimiter.makeRequest(`https://api.vatsim.net/v2/members/${vatsimData.user_id}`)
+                    ]);
+
+                    const [vatcarData, ratingData] = await Promise.all([
+                        vatcarResponse.json(),
+                        ratingResponse.json()
+                    ]);
+
+                    if (!vatcarData.success) {
+                        console.log(`Failed to fetch VATCAR data for ${member.user.tag}`);
+                        continue;
+                    }
 
                     // Determine required roles
                     const requiredRoles = new Set();
                     requiredRoles.add(process.env.NORMAL_VATSIM_USER_ROLE_ID);
 
+                    // Get neighboring facilities array and clean up any whitespace
                     const neighboringFacilities = process.env.NEIGHBORING_FACILITIES.split(',').map(f => f.trim());
-                    
-                    // Check if they appear in VATCAR data
-                    const isHomeController = data.data.controllers.some(c => c.cid === parseInt(vatsimData.user_id));
-                    const isVisitingController = data.data.visitors.some(v => v.cid === parseInt(vatsimData.user_id));
+                    console.log(`Checking neighboring facilities: ${neighboringFacilities.join(', ')}`);
+
+                    // Check controller status
+                    const isHomeController = vatcarData.data.fir && vatcarData.data.fir.name_short === facility;
+                    const isVisitingController = vatcarData.data.visiting_facilities.some(f => f.fir.name_short === facility);
                     
                     // Check for neighboring facility affiliation
-                    const isNeighboringController = data.data.controllers.some(c => 
-                        neighboringFacilities.includes(c.fir?.name_short) && c.cid === parseInt(vatsimData.user_id)
-                    ) || data.data.visitors.some(v => 
-                        neighboringFacilities.includes(v.fir?.name_short) && v.cid === parseInt(vatsimData.user_id)
+                    const isNeighboringController = (
+                        (vatcarData.data.fir && neighboringFacilities.includes(vatcarData.data.fir.name_short)) ||
+                        vatcarData.data.visiting_facilities.some(f => neighboringFacilities.includes(f.fir.name_short))
                     );
 
+                    // Debug log the VATCAR data
+                    console.log(`VATCAR data for ${member.user.tag}:`, {
+                        homeFIR: vatcarData.data.fir?.name_short,
+                        visitingFIRs: vatcarData.data.visiting_facilities.map(f => f.fir.name_short),
+                        neighboringFacilities
+                    });
+
+                    // Handle controller roles
                     if (isHomeController || isVisitingController) {
                         requiredRoles.add(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
                         if (isNeighboringController) {
@@ -159,7 +180,25 @@ async function performRosterUpdate(guild, client) {
                         }
                     } else if (isNeighboringController) {
                         requiredRoles.add(process.env.NEIGHBORING_CONTROLLER_ROLE_ID);
-                        console.log(`Adding Neighboring Controller role for ${member.user.tag}`);
+                        const neighboringFacility = vatcarData.data.fir?.name_short || 
+                            vatcarData.data.visiting_facilities.find(f => 
+                                neighboringFacilities.includes(f.fir.name_short)
+                            )?.fir.name_short;
+                        
+                        console.log(`Adding Neighboring Controller role for ${member.user.tag} (${neighboringFacility} controller)`);
+                    } else {
+                        console.log(`No special roles needed for ${member.user.tag}`);
+                    }
+
+                    // Handle rating role
+                    const userRating = ratingData.rating;
+                    console.log(`User ${member.user.tag} has a rating of: ${userRating}`);
+
+                    if (userRating in ratingRoles) {
+                        requiredRoles.add(ratingRoles[userRating]);
+                        console.log(`Adding rating role for rating ${userRating} (${ratingNames[userRating]}) to required roles`);
+                    } else {
+                        console.log(`No role found for rating ${userRating}`);
                     }
 
                     // Compare current roles with required roles
@@ -169,38 +208,42 @@ async function performRosterUpdate(guild, client) {
                         [
                             process.env.NORMAL_VATSIM_USER_ROLE_ID, 
                             process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID,
-                            process.env.NEIGHBORING_CONTROLLER_ROLE_ID
-                        ].includes(roleId)
-                    ).filter(roleId => !requiredRoles.has(roleId));
+                            process.env.NEIGHBORING_CONTROLLER_ROLE_ID,
+                            ...Object.values(ratingRoles)
+                        ].includes(roleId) && !requiredRoles.has(roleId)
+                    );
 
+                    // Debug logging
+                    console.log(`Debug for ${member.user.tag}:`, {
+                        isHomeController,
+                        isVisitingController,
+                        isNeighboringController,
+                        rating: `${userRating} (${ratingNames[userRating]})`,
+                        requiredRoles: [...requiredRoles].map(roleId => {
+                            const role = guild.roles.cache.get(roleId);
+                            return role ? role.name : roleId;
+                        }),
+                        rolesToAdd: rolesToAdd.map(roleId => {
+                            const role = guild.roles.cache.get(roleId);
+                            return role ? role.name : roleId;
+                        }),
+                        rolesToRemove: rolesToRemove.map(roleId => {
+                            const role = guild.roles.cache.get(roleId);
+                            return role ? role.name : roleId;
+                        })
+                    });
+
+                    // Update roles if needed
                     if (rolesToAdd.length > 0 || rolesToRemove.length > 0) {
-                        stats.wouldUpdate++;
-                        console.log(`\n📝 ${member.user.tag} (${vatsimData.user_id}) - Updating roles:`);
-                        
                         if (rolesToAdd.length > 0) {
-                            const roleNames = rolesToAdd.map(id => guild.roles.cache.get(id)?.name || id).join(', ');
-                            console.log(`   ➕ Adding roles: ${roleNames}`);
-                            try {
-                                await member.roles.add(rolesToAdd);
-                            } catch (error) {
-                                console.log(`   ❌ Error adding roles: ${error.message}`);
-                            }
+                            await member.roles.add(rolesToAdd);
+                            console.log(`Added roles to ${member.user.tag}:`, rolesToAdd);
                         }
-                        
                         if (rolesToRemove.length > 0) {
-                            const roleNames = rolesToRemove.map(id => guild.roles.cache.get(id)?.name || id).join(', ');
-                            console.log(`   ➖ Removing roles: ${roleNames}`);
-                            try {
-                                await member.roles.remove(rolesToRemove);
-                            } catch (error) {
-                                console.log(`   ❌ Error removing roles: ${error.message}`);
-                            }
+                            await member.roles.remove(rolesToRemove);
+                            console.log(`Removed roles from ${member.user.tag}:`, rolesToRemove);
                         }
-
-                        console.log(`    Current rating: ${ratingNames[ratingData.rating] || ratingData.rating}`);
-                        if (data.data.controllers.some(c => c.cid === parseInt(vatsimData.user_id)) || data.data.visitors.some(v => v.cid === parseInt(vatsimData.user_id))) {
-                            console.log(`   🏠 Status: ${data.data.visitors.some(v => v.cid === parseInt(vatsimData.user_id)) ? 'Visitor' : 'Home Controller'}`);
-                        }
+                        stats.wouldUpdate++;
                     } else {
                         console.log(`✅ ${member.user.tag} (${vatsimData.user_id}) - No changes needed`);
                         stats.noChangesNeeded++;
@@ -213,8 +256,9 @@ async function performRosterUpdate(guild, client) {
                     continue;
                 }
             } catch (error) {
-                console.error('Error in roster update:', error);
-                throw error;
+                console.error(`Error processing member ${memberId}:`, error);
+                stats.skipped++;
+                continue;
             }
         }
 

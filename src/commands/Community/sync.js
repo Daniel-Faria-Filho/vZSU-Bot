@@ -83,12 +83,22 @@ module.exports = {
             const isHomeController = fir && fir.name_short === facility;
             const isVisitingController = visiting_facilities.some(f => f.fir.name_short === facility);
 
-            // Get neighboring facilities array from env
+            // Get neighboring facilities array and clean up any whitespace
             const neighboringFacilities = process.env.NEIGHBORING_FACILITIES.split(',').map(f => f.trim());
+            console.log(`Checking neighboring facilities: ${neighboringFacilities.join(', ')}`);
 
-            // Check if user is affiliated with any neighboring facility
-            const isNeighboringController = (fir && neighboringFacilities.includes(fir.name_short)) || 
-                                           visiting_facilities.some(f => neighboringFacilities.includes(f.fir.name_short));
+            // Check for neighboring facility affiliation
+            const isNeighboringController = (
+                (vatcarData.data.fir && neighboringFacilities.includes(vatcarData.data.fir.name_short)) ||
+                vatcarData.data.visiting_facilities.some(f => neighboringFacilities.includes(f.fir.name_short))
+            );
+
+            // Debug log the VATCAR data
+            console.log(`VATCAR data for ${interaction.user.tag}:`, {
+                homeFIR: vatcarData.data.fir?.name_short,
+                visitingFIRs: vatcarData.data.visiting_facilities.map(f => f.fir.name_short),
+                neighboringFacilities
+            });
 
             // Always add VATSIM User role
             rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID);
@@ -105,19 +115,16 @@ module.exports = {
                 if (isNeighboringController) {
                     console.log(`Skipping Neighboring Controller role - User is already a visiting controller`);
                 }
+            } else if (isNeighboringController) {
+                rolesToAssign.push(process.env.NEIGHBORING_CONTROLLER_ROLE_ID);
+                const neighboringFacility = vatcarData.data.fir?.name_short || 
+                    vatcarData.data.visiting_facilities.find(f => 
+                        neighboringFacilities.includes(f.fir.name_short)
+                    )?.fir.name_short;
+                
+                console.log(`Adding Neighboring Controller role for ${interaction.user.tag} (${neighboringFacility} controller)`);
             } else {
-                if (isNeighboringController) {
-                    rolesToAssign.push(process.env.NEIGHBORING_CONTROLLER_ROLE_ID);
-                    const affiliatedFacilities = [
-                        ...(fir && neighboringFacilities.includes(fir.name_short) ? [fir.name_short] : []),
-                        ...visiting_facilities
-                            .filter(f => neighboringFacilities.includes(f.fir.name_short))
-                            .map(f => f.fir.name_short)
-                    ];
-                    console.log(`Adding Neighboring Controller role for ${affiliatedFacilities.join(', ')} affiliation`);
-                } else {
-                    console.log(`Assigning only VATSIM User role: ${rolesToAssign}`);
-                }
+                console.log(`Assigning only VATSIM User role: ${rolesToAssign}`);
             }
 
             // Assign VATSIM User role first
