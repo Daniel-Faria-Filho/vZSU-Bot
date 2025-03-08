@@ -80,33 +80,54 @@ module.exports = {
             const nickname = `${first_name} ${last_name} - ${cid}`;
             console.log(`Setting nickname for user ${discordUserId}: ${nickname}`);
 
-            // Fetch the member object for the specified Discord ID
-            const member = await interaction.guild.members.fetch(discordUserId);
-            if (!member) {
-                console.log(`User with Discord ID ${discordUserId} not found in the server.`);
-                const reply = await interaction.editReply({ content: "User not found in the server.", ephemeral: true });
-                setTimeout(() => reply.delete(), 30000); // Delete after 30 seconds
-                return;
-            }
-
             // Role assignment logic
             const rolesToAssign = [];
-            if (fir && fir.name_short === facility) {
-                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // VATSIM User role
-                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID); // Home Controller role
+            const isHomeController = fir && fir.name_short === facility;
+            const isVisitingController = visiting_facilities.some(f => f.fir.name_short === facility);
+
+            // Get neighboring facilities array from env (trim spaces and split by comma)
+            const neighboringFacilities = process.env.NEIGHBORING_FACILITIES.split(',').map(f => f.trim());
+
+            // Check if user is affiliated with any neighboring facility
+            const isNeighboringController = (fir && neighboringFacilities.includes(fir.name_short)) || 
+                                           visiting_facilities.some(f => neighboringFacilities.includes(f.fir.name_short));
+
+            // Always add VATSIM User role
+            rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID);
+
+            if (isHomeController) {
+                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
                 console.log(`Assigning roles for home controller: ${rolesToAssign}`);
-            } else if (visiting_facilities.some(f => f.fir.name_short === facility)) { // Check if they're visiting this specific facility
-                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // VATSIM User role
-                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID); // Visiting Controller role
+                if (isNeighboringController) {
+                    console.log(`Skipping Neighboring Controller role - User is already a home controller`);
+                }
+            } else if (isVisitingController) {
+                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
                 console.log(`Assigning roles for visiting controller: ${rolesToAssign}`);
+                if (isNeighboringController) {
+                    console.log(`Skipping Neighboring Controller role - User is already a visiting controller`);
+                }
             } else {
-                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // Only VATSIM User role
-                console.log(`Assigning only VATSIM User role: ${rolesToAssign}`);
+                // Only add Neighboring Controller role if they're not a home/visiting controller
+                if (isNeighboringController) {
+                    rolesToAssign.push(process.env.NEIGHBORING_CONTROLLER_ROLE_ID);
+                    const affiliatedFacilities = [
+                        ...(fir && neighboringFacilities.includes(fir.name_short) ? [fir.name_short] : []),
+                        ...visiting_facilities
+                            .filter(f => neighboringFacilities.includes(f.fir.name_short))
+                            .map(f => f.fir.name_short)
+                    ];
+                    console.log(`Adding Neighboring Controller role for ${affiliatedFacilities.join(', ')} affiliation`);
+                } else {
+                    console.log(`Assigning only VATSIM User role: ${rolesToAssign}`);
+                }
             }
 
             // Assign roles to the specified user
-            await member.roles.add(rolesToAssign); // Add roles to the specified user
-            console.log(`Roles assigned to user ${discordUserId}.`);
+            await interaction.guild.members.fetch(discordUserId).then(member => {
+                member.roles.add(rolesToAssign);
+                console.log(`Roles assigned to user ${discordUserId}.`);
+            });
 
             const hasHomeOrVisitingControllerRole = interaction.member.roles.cache.some(role => role.id === process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
 
@@ -153,8 +174,10 @@ module.exports = {
 
             // Assign the rating role to the specified user if it exists
             if (userRating in ratingRoles) {
-                await member.roles.add(ratingRoles[userRating]);
-                console.log(`Assigned rating role for rating ${userRating} to user ${discordUserId}.`);
+                await interaction.guild.members.fetch(discordUserId).then(member => {
+                    member.roles.add(ratingRoles[userRating]);
+                    console.log(`Assigned rating role for rating ${userRating} to user ${discordUserId}.`);
+                });
             } else {
                 console.log(`No role found for rating ${userRating} for user ${discordUserId}.`);
             }
@@ -176,10 +199,10 @@ module.exports = {
             // Fetch role names instead of IDs
             const roleNames = rolesToAssign.map(roleId => {
                 const role = interaction.guild.roles.cache.get(roleId);
-                return role ? role.name : `Unknown Role (${roleId})`;
+                return role ? role.name : `Unknown Role (${roleId})`; // Fallback if role is not found
             }).join(', ');
 
-            // Log the successful sync by sending a DM to the Facility Web Master
+            // Log the successful sync by sending a DM to the specified user
             const embed = new EmbedBuilder()
                 .setColor('#0099ff')
                 .setTitle('Test User Sync Successful')
