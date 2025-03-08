@@ -80,17 +80,44 @@ module.exports = {
 
             // Role assignment logic
             const rolesToAssign = [];
-            if (fir && fir.name_short === facility) {
-                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // VATSIM User role
-                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID); // Home Controller role
+            const isHomeController = fir && fir.name_short === facility;
+            const isVisitingController = visiting_facilities.some(f => f.fir.name_short === facility);
+
+            // Get neighboring facilities array from env
+            const neighboringFacilities = process.env.NEIGHBORING_FACILITIES.split(',').map(f => f.trim());
+
+            // Check if user is affiliated with any neighboring facility
+            const isNeighboringController = (fir && neighboringFacilities.includes(fir.name_short)) || 
+                                           visiting_facilities.some(f => neighboringFacilities.includes(f.fir.name_short));
+
+            // Always add VATSIM User role
+            rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID);
+
+            if (isHomeController) {
+                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
                 console.log(`Assigning roles for home controller: ${rolesToAssign}`);
-            } else if (visiting_facilities.some(f => f.fir.name_short === facility)) { // Check if they're visiting this specific facility
-                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // VATSIM User role
-                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID); // Visiting Controller role
+                if (isNeighboringController) {
+                    console.log(`Skipping Neighboring Controller role - User is already a home controller`);
+                }
+            } else if (isVisitingController) {
+                rolesToAssign.push(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
                 console.log(`Assigning roles for visiting controller: ${rolesToAssign}`);
+                if (isNeighboringController) {
+                    console.log(`Skipping Neighboring Controller role - User is already a visiting controller`);
+                }
             } else {
-                rolesToAssign.push(process.env.NORMAL_VATSIM_USER_ROLE_ID); // Only VATSIM User role
-                console.log(`Assigning only VATSIM User role: ${rolesToAssign}`);
+                if (isNeighboringController) {
+                    rolesToAssign.push(process.env.NEIGHBORING_CONTROLLER_ROLE_ID);
+                    const affiliatedFacilities = [
+                        ...(fir && neighboringFacilities.includes(fir.name_short) ? [fir.name_short] : []),
+                        ...visiting_facilities
+                            .filter(f => neighboringFacilities.includes(f.fir.name_short))
+                            .map(f => f.fir.name_short)
+                    ];
+                    console.log(`Adding Neighboring Controller role for ${affiliatedFacilities.join(', ')} affiliation`);
+                } else {
+                    console.log(`Assigning only VATSIM User role: ${rolesToAssign}`);
+                }
             }
 
             // Assign VATSIM User role first

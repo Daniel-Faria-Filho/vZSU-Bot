@@ -9,6 +9,8 @@ FACILITY_WEB_MASTER_DISCORD_ID="" #Whenever the /synctest command is used for te
 # ROLES:
 NORMAL_VATSIM_USER_ROLE_ID="" #VATSIM User role
 VISITING_OR_HOME_CONTROLLER_ROLE_ID="" #Home/Visiting Controller role
+NEIGHBORING_FACILITIES= #Comma-separated list of neighboring facility identifiers (e.g., TNCF, TTZP, MYNN)
+NEIGHBORING_CONTROLLER_ROLE_ID="" #Role ID for controllers from neighboring facilities
 
 #Rating roles
 OBS_ROLE_ID=""

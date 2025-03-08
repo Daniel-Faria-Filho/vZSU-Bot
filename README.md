@@ -45,6 +45,8 @@ A powerful Discord bot designed for VATCAR facilities that automates role manage
 ### Role Configuration
 - `NORMAL_VATSIM_USER_ROLE_ID`: Role ID for verified VATSIM members
 - `VISITING_OR_HOME_CONTROLLER_ROLE_ID`: Role ID for facility controllers
+- `NEIGHBORING_FACILITIES`: Comma-separated list of neighboring facility identifiers
+- `NEIGHBORING_CONTROLLER_ROLE_ID`: Role ID for controllers from neighboring facilities
 - Rating role IDs (OBS through ADM)
 
 ### Automatic Roster Updates
@@ -65,10 +67,12 @@ Configure position names for the top-down support command:
 
 2. `/sync` - Sync user's Discord roles with VATSIM/VATCAR
    - Updates roles and nickname
+   - Assigns appropriate controller roles (Home/Visiting/Neighboring)
    - Notifies ATM of changes
 
 3. `/synctest` - Test sync process for specific Discord ID
    - *Access: Senior Staff and Tech Staff*
+   - Tests role assignment including neighboring facility detection
    - Sends results to webmaster
 
 4. `/autoresponder` - Set up automatic responses
@@ -104,3 +108,15 @@ Manage command access in Discord:
 For setup assistance or questions, contact:
 - Discord: Daniel Faria
 - Email: inbox@danielfaria.cc
+
+## Role Hierarchy
+
+The bot implements the following role hierarchy:
+1. Home/Visiting Controller Role
+   - Takes precedence over Neighboring Controller role
+   - Assigned to controllers from your facility
+2. Neighboring Controller Role
+   - Assigned to controllers from configured neighboring facilities
+   - Only assigned if user isn't already a home/visiting controller
+3. VATSIM User Role
+   - Base role for all verified VATSIM members

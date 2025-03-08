@@ -137,28 +137,40 @@ async function performRosterUpdate(guild, client) {
 
                     // Determine required roles
                     const requiredRoles = new Set();
-                    requiredRoles.add(process.env.NORMAL_VATSIM_USER_ROLE_ID); // Always add VATSIM role if we got this far
+                    requiredRoles.add(process.env.NORMAL_VATSIM_USER_ROLE_ID);
 
-                    // If they appear anywhere in VATCAR data, give them the controller role
-                    const isInVATCAR = (
-                        data.data.controllers.some(c => c.cid === parseInt(vatsimData.user_id)) ||
-                        data.data.visitors.some(v => v.cid === parseInt(vatsimData.user_id))
+                    const neighboringFacilities = process.env.NEIGHBORING_FACILITIES.split(',').map(f => f.trim());
+                    
+                    // Check if they appear in VATCAR data
+                    const isHomeController = data.data.controllers.some(c => c.cid === parseInt(vatsimData.user_id));
+                    const isVisitingController = data.data.visitors.some(v => v.cid === parseInt(vatsimData.user_id));
+                    
+                    // Check for neighboring facility affiliation
+                    const isNeighboringController = data.data.controllers.some(c => 
+                        neighboringFacilities.includes(c.fir?.name_short) && c.cid === parseInt(vatsimData.user_id)
+                    ) || data.data.visitors.some(v => 
+                        neighboringFacilities.includes(v.fir?.name_short) && v.cid === parseInt(vatsimData.user_id)
                     );
 
-                    if (isInVATCAR) {
+                    if (isHomeController || isVisitingController) {
                         requiredRoles.add(process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID);
-                    }
-                    
-                    if (ratingRoles[ratingData.rating]) {
-                        requiredRoles.add(ratingRoles[ratingData.rating]);
+                        if (isNeighboringController) {
+                            console.log(`Skipping Neighboring Controller role for ${member.user.tag} - Already has controller role`);
+                        }
+                    } else if (isNeighboringController) {
+                        requiredRoles.add(process.env.NEIGHBORING_CONTROLLER_ROLE_ID);
+                        console.log(`Adding Neighboring Controller role for ${member.user.tag}`);
                     }
 
                     // Compare current roles with required roles
                     const currentRoles = member.roles.cache;
                     const rolesToAdd = [...requiredRoles].filter(roleId => !currentRoles.has(roleId));
                     const rolesToRemove = [...currentRoles.keys()].filter(roleId => 
-                        Object.values(ratingRoles).includes(roleId) || 
-                        [process.env.NORMAL_VATSIM_USER_ROLE_ID, process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID].includes(roleId)
+                        [
+                            process.env.NORMAL_VATSIM_USER_ROLE_ID, 
+                            process.env.VISITING_OR_HOME_CONTROLLER_ROLE_ID,
+                            process.env.NEIGHBORING_CONTROLLER_ROLE_ID
+                        ].includes(roleId)
                     ).filter(roleId => !requiredRoles.has(roleId));
 
                     if (rolesToAdd.length > 0 || rolesToRemove.length > 0) {
