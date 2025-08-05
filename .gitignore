@@ -50,6 +50,7 @@ jspm_packages/
 .idea/
 *.swp
 *.swo
+.cursorignore
 
 # OS generated files
 .DS_Store

@@ -1,0 +1,35 @@
+CLIENT_TOKEN= #This is you Discord bot token. Can be found in Discord Development Portal's bot settings.
+BOT_NAME= #Your Bot Name
+API_KEY= #Go to VATCAR Management tab in VATCAR website and copy/paste the production key
+
+
+FACILITY_NAME= #This can be found by going to the FIR Management Tab in VATCAR and checking the Tab Name on your Browser.
+FACILITY_AIR_TRAFFIC_MANAGER_DISCORD_ID="" #This is the Discord ID that all /Sync logs will be DMed too every time someone uses the /sync command.
+FACILITY_WEB_MASTER_DISCORD_ID="" #Whenever the /synctest command is used for testing the /Sync logs will be sent to the "Tech Guy" instead of the Air Traffic Manager.
+# ROLES:
+NORMAL_VATSIM_USER_ROLE_ID="" #VATSIM User role
+VISITING_OR_HOME_CONTROLLER_ROLE_ID="" #Home/Visiting Controller role
+NEIGHBORING_FACILITIES= #Comma-separated list of neighboring facility identifiers (e.g., TNCF, TTZP, MYNN)
+NEIGHBORING_CONTROLLER_ROLE_ID="" #Role ID for controllers from neighboring facilities
+
+#Rating roles
+OBS_ROLE_ID=""
+S1_ROLE_ID=""
+S2_ROLE_ID=""
+S3_ROLE_ID=""
+C1_ROLE_ID=""
+C3_ROLE_ID=""
+I1_ROLE_ID=""
+I3_ROLE_ID=""
+SUP_ROLE_ID=""
+ADM_ROLE_ID=""
+
+
+#The variables below are for the /top-down-support command. All this command does is allows users to request top down support in the form of an embed. Edit the variables below in the EXACT FORMAT they are in. Make sure there are no spaces in between the comas and other letters.
+REQUESTING_POSITION_OPTIONS="San Juan Approach,San Juan Approach Split,Center Split,San Juan Cab,St. Thomas Cab,St. Croix Cab" #This allows for users to select the support position they want these options.
+CURRENT_POSITION_OPTIONS="San Juan Center,San Juan Approach,San Juan Tower,St. Thomas Cab,St. Croix Cab" #This allows for users to select the position they are currently controlling from these options.
+
+# Automatic roster update settings
+ROSTER_UPDATE_ENABLED=true # Set to false to disable automatic updates. Set to true to enable automatic updates.
+ROSTER_UPDATE_HOUR=20 # Hour in Eastern Time (24-hour format)
+ROSTER_UPDATE_MINUTE=00 # Minute in Eastern Time
