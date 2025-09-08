@@ -56,7 +56,7 @@ async function fetchVatsimData(discordUserId) {
 
 // Function to fetch user data from VATCAR API
 async function fetchVatcarData(cid) {
-    const response = await fetch(`https://vatcar.net/public/api/v2/user/${cid}?api_key=${process.env.API_KEY}`);
+    const response = await fetch(`https://vatcar.net/api/v2/user/${cid}?api_key=${process.env.API_KEY}`);
     const data = await response.json();
     console.log(`VATCAR API response for CID ${cid}:`, data);
     return data.success ? data : null; // Return data if success is true

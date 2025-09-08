@@ -22,7 +22,7 @@ module.exports = {
 
             if (userData.user_id) {
                 const userCid = userData.user_id; // Get the user_id to use as CID
-                const apiUrl = `https://vatcar.net/public/api/v2/user/${userCid}/notes?api_key=${apiKey}`;
+                const apiUrl = `https://vatcar.net/api/v2/user/${userCid}/notes?api_key=${apiKey}`;
 
                 const response = await fetch(apiUrl);
                 const data = await response.json();

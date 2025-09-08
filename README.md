@@ -35,7 +35,7 @@ A powerful Discord bot designed for VATCAR facilities that automates role manage
 ### Basic Configuration
 - `CLIENT_TOKEN`: Your Discord bot token from [Discord Developer Portal](https://discord.com/developers/applications/)
 - `BOT_NAME`: Your facility name + "BOT" (e.g., "vZSU BOT")
-- `API_KEY`: VATCAR production key from [VATCAR FIR Management](https://vatcar.net/public/manage/facilities)
+- `API_KEY`: VATCAR production key from [VATCAR FIR Management](https://vatcar.net/manage/facilities)
 - `FACILITY_NAME`: Your 4-letter ICAO identifier
 
 ### Discord IDs

@@ -47,13 +47,13 @@ module.exports = {
             console.log(`Fetched CID for user ${discordUserId}: ${cid}`);
 
             // Fetch user data from VATCAR API
-            const vatcarResponse = await fetch(`https://vatcar.net/public/api/v2/user/${cid}?api_key=${apiKey}`);
+            const vatcarResponse = await fetch(`https://vatcar.net/api/v2/user/${cid}?api_key=${apiKey}`);
             const vatcarData = await vatcarResponse.json();
             console.log(`VATCAR API response for CID ${cid}:`, vatcarData);
 
             if (!vatcarData.success) {
                 console.log(`Failed to fetch VATCAR data for CID ${cid}.`);
-                const reply = await interaction.editReply({ content: "Please log in with your Discord on the [VATCAR website](https://vatcar.net/public/auth/login) and go to My VATCAR > Integrations then try again. If the issue persists, contact Senior Staff.", ephemeral: true });
+                const reply = await interaction.editReply({ content: "Please log in with your Discord on the [VATCAR website](https://vatcar.net/auth/login) and go to My VATCAR > Integrations then try again. If the issue persists, contact Senior Staff.", ephemeral: true });
                 setTimeout(() => reply.delete(), 30000); // Delete after 30 seconds
                 
                 // Notify the Facility Web Master about the VATCAR fetch failure

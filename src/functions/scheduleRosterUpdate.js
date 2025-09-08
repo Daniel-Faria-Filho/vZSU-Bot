@@ -75,7 +75,7 @@ async function performRosterUpdate(guild, client) {
         };
 
         // Fetch VATCAR roster data
-        const response = await fetch(`https://vatcar.net/public/api/v2/facility/roster?api_key=${process.env.API_KEY}`);
+        const response = await fetch(`https://vatcar.net/api/v2/facility/roster?api_key=${process.env.API_KEY}`);
         const data = await response.json();
 
         if (!data.success) {
@@ -135,7 +135,7 @@ async function performRosterUpdate(guild, client) {
 
                     // Get user's VATCAR data and rating data once
                     const [vatcarResponse, ratingResponse] = await Promise.all([
-                        fetch(`https://vatcar.net/public/api/v2/user/${vatsimData.user_id}?api_key=${process.env.API_KEY}`),
+                        fetch(`https://vatcar.net/api/v2/user/${vatsimData.user_id}?api_key=${process.env.API_KEY}`),
                         vatsimRateLimiter.makeRequest(`https://api.vatsim.net/v2/members/${vatsimData.user_id}`)
                     ]);
 
